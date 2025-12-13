@@ -36,6 +36,6 @@ class ScanCommand(BaseCommand):
             no_stop=no_stop,
             reverse=reverse,
             output=output
-)
+        )
 
         return f"Scan complete. Found {len(results)} networks."

@@ -8,14 +8,14 @@ Current tools like `reaver` or `bully` are designed to sit and wait. Instead of 
 
 ## Project Roadmap / To-Do List
 
-[ ] Monitor Mode Toggle: Create a reliable method to take an interface down, set mode to monitor, and bring it up.
+- [x] Monitor Mode Toggle: Create a reliable method to take an interface down, set mode to monitor, and bring it up.
 
-[ ] Structured Scanning: enhance core/scan.py to parse active clients (Stations) associated with a chosen AP, not just the APs themselves.
+- [ ] Structured Scanning: enhance core/scan.py to parse active clients (Stations) associated with a chosen AP, not just the APs themselves.
 
-[ ] GPS Integration: Implement a thread to read data from a USB GPS dongle to tag discovered BSSIDs with coordinates.
+- [ ] GPS Integration: Implement a thread to read data from a USB GPS dongle to tag discovered BSSIDs with coordinates.
 
-[ ] Kismet/Wigle Compatibility: Export scan results to formats compatible with Wigle.net uploading.
+- [ ] Kismet/Wigle Compatibility: Export scan results to formats compatible with Wigle.net uploading.
 
-[ ] WPS Harvest Mode: Automate WPS transaction initialization with neighbouring APs to capture M1 - M3 messages, and store the cryptographic parameters (PKE, PKR, E-Hash1, E-Hash2, AuthKey) for offline pin cracking.
+- [ ] WPS Harvest Mode: Automate WPS transaction initialization with neighbouring APs to capture M1 - M3 messages, and store the cryptographic parameters (PKE, PKR, E-Hash1, E-Hash2, AuthKey) for offline pin cracking.
 
-[ ] Priority Harvest: Implement a priority queue that sorts discovered APs by a score based on: OUI (Known Vulnerable Manufacturers), Signal Strength (RSSI), WPS State (Unlocked), regex (router ESSIDs that I've observed are almost always vulnerable). High-score targets are processed first.
+- [ ] Priority Harvest: Implement a priority queue that sorts discovered APs by a score based on: OUI (Known Vulnerable Manufacturers), Signal Strength (RSSI), WPS State (Unlocked), regex (router ESSIDs that I've observed are almost always vulnerable). High-score targets are processed first.
