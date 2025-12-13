@@ -3,6 +3,8 @@ import os
 import re
 from typing import Dict, List, Optional
 
+from .vulnerability_database import VulnerabilityDatabase
+
 class WirelessMonitor:
     """
         Discovers APs using `iw`. Parses the output.
@@ -11,9 +13,9 @@ class WirelessMonitor:
     RE_DS_CHANNEL = re.compile(r'^\s*DS Parameter set: channel (\d+)')
     RE_PRIMARY_CHANNEL = re.compile(r'^\s*\* primary channel: (\d+)')
 
-    def __init__(self, interface: str):
+    def __init__(self, interface: str, vuln_file: str = "vulnwsc.txt"):
         self.interface = interface
-        self.vuln_list = ["D-Link DIR-600", "TP-Link TL-WR841N"]
+        self.vuln_db = VulnerabilityDatabase(vuln_file)
         self.networks: Dict[str, dict] = {}
 
     def perform_scan(self) -> str:

@@ -4,11 +4,11 @@ from commands import BaseCommand
 from core.scan import perform_scan, list_interfaces
 
 class ScanCommand(BaseCommand):
-    @classmethod
-    def get_name(cls): return "scan"
+    NAME = "scan"
+    HELP = "Scan all surrounding networks."
 
-    @classmethod
-    def configure_parser(cls, parser: argparse.ArgumentParser):
+    @staticmethod
+    def configure_parser(parser: argparse.ArgumentParser):
         parser.add_argument('interface', nargs='?', help='Interface (Managed or Monitor mode OK)', metavar='INTERFACE')
         parser.add_argument('-b', '--bssid', help='Target specific BSSID', metavar='BSSID')
         parser.add_argument('-l', '--loops', type=int, default=1, help='number of scan loops to perform', metavar='LOOPS')

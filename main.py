@@ -9,9 +9,8 @@ class CLIDriver:
         self.subparsers = self.parser.add_subparsers(dest='command_name', required=True, title='Available Commands')
 
         for name, cmd_class in COMMAND_REGISTRY.items():
-            if name == "scan":
-                cmd_parser = self.subparsers.add_parser(name, help=f"Scan all surrounding networks.")
-                cmd_class.configure_parser(cmd_parser)
+            cmd_parser = self.subparsers.add_parser(name, help=cmd_class.HELP)
+            cmd_class.configure_parser(cmd_parser)
 
     def run(self):
         try:
