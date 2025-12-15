@@ -1,4 +1,5 @@
 import argparse
+import os
 import subprocess
 import sys
 
@@ -25,15 +26,18 @@ class ManagedCommand(BaseCommand):
             print(f"[ERROR] Interface required. Available: {', '.join(list_interfaces())}")
             raise SystemExit(1)
 
+        if not os.path.exists(f"/sys/class/net/{interface}"):
+            print(f"[ERROR] Interface '{interface}' not found.")
+            print(f"Available: {', '.join(list_interfaces())}")
+            sys.exit(1)
+
         print(f"[*] Switching {interface} to MANAGED mode...")
 
         im = InterfaceManagement(interface)
         try:
-            # 1. Switch Mode
             im.managed()
             msg = f"[SUCCESS] {interface} is now in MANAGED mode."
 
-            # 2. Restart NetworkManager if requested
             if restart:
                 print("[*] Restarting NetworkManager...", end=' ', flush=True)
                 try:
