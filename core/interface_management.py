@@ -183,7 +183,7 @@ class InterfaceManagement:
         except subprocess.CalledProcessError:
             raise ValueError(f"Interface {self._interface} not found or 'iw' command failed.")
 
-    def _set_interface_mode(self, mode: InterfaceMode):
+    def _set_interface_mode(self, mode: InterfaceMode) -> None:
         """
         Reliably switches mode by deleting the interface and re-creating it.
         """
@@ -191,8 +191,7 @@ class InterfaceManagement:
             phy = self._get_phy()
             mode_str = mode.value
 
-            subprocess.run(['ip', 'link', 'set', self._interface, InterfaceAction.DOWN],
-                           check=False, capture_output=True)
+            self.down(check=False, capture_output=True)
             subprocess.run(['iw', 'dev', self._interface, 'del'],
                            check=True, capture_output=True)
             subprocess.run(
@@ -205,17 +204,18 @@ class InterfaceManagement:
             err_msg = e.stderr.decode().strip() if e.stderr else "Unknown error"
             raise RuntimeError(f"Failed to set {mode_str} mode: {err_msg}")
 
-    def down(self):
+    def down(self, check: bool = True, capture_output: bool = False):
         """
         Bring the network interface down.
         """
-        subprocess.run(['ip', 'link', 'set', self._interface, InterfaceAction.DOWN], check=True)
+        subprocess.run(['ip', 'link', 'set', self._interface, InterfaceAction.DOWN.value],
+                       check=check, capture_output=capture_output)
 
     def up(self):
         """
         Bring the network interface up.
         """
-        subprocess.run(['ip', 'link', 'set', self._interface, InterfaceAction.UP], check=True)
+        subprocess.run(['ip', 'link', 'set', self._interface, InterfaceAction.UP.value], check=True)
 
     def monitor(self):
         """
