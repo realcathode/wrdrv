@@ -4,7 +4,7 @@ import subprocess
 import sys
 
 from commands import BaseCommand
-from core.interface_management import InterfaceManagement
+from core.interface_management import InterfaceManagement, ConflictResolver
 from core.scan import list_interfaces
 
 
@@ -37,18 +37,13 @@ class ManagedCommand(BaseCommand):
         try:
             im.managed()
             msg = f"[SUCCESS] {interface} is now in MANAGED mode."
-
             if restart:
-                print("[*] Restarting NetworkManager...", end=' ', flush=True)
-                try:
-                    subprocess.run(['systemctl', 'restart', 'NetworkManager'], check=True, capture_output=True)
-                    print("OK")
-                    msg += " (NetworkManager restarted)"
-                except subprocess.CalledProcessError:
-                    print("FAILED")
-                    msg += " (NetworkManager restart failed)"
-
-            return msg
+                resolver = ConflictResolver()
+                restored = resolver.restore()
+                if restored:
+                    msg += f" (Restored: {', '.join(restored)})"
+                else:
+                    msg += " (No services found to restore)"
 
         except RuntimeError as e:
             print(f"[ERROR] {e}")

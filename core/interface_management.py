@@ -2,6 +2,7 @@ import signal
 import subprocess
 from enum import Enum
 from dataclasses import dataclass
+from typing import List
 
 import psutil
 
@@ -39,7 +40,7 @@ class ConflictResolver:
                  'NetworkManager', 'knetworkmanager', 'avahi-autoipd', 'avahi-daemon', 'wlassistant', 'wifibox',
                  'net_applet', 'wicd-daemon', 'wicd-client', 'iwd', 'hostapd'
                  }
-    SERVICES = {'wicd', 'network-manager', 'avahi-daemon', 'NetworkManager'}
+    SERVICES = {'wicd', 'network-manager', 'avahi-daemon', 'NetworkManager', 'wpa_supplicant'}
 
 
     def _check_services(self, kill: bool = False):
@@ -126,6 +127,27 @@ class ConflictResolver:
         services = self._check_services(kill=True)
         process = self._check_processes(kill=True)
         return CheckResult(services=services, processes=process)
+
+    @staticmethod
+    def restore() -> List[str]:
+        """
+        Restores critical networking services that may have been killed.
+        """
+        targets = ['NetworkManager', 'avahi-daemon', 'wicd', 'wpa_supplicant']
+
+        results = []
+        for service in targets:
+            check = subprocess.run(['systemctl', 'is-enabled', service],
+                                   capture_output=True, text=True)
+            if check.returncode == 0:
+                print(f"[*] Restoring service: {service}...", end=' ', flush=True)
+                try:
+                    subprocess.run(['systemctl', 'restart', service], check=True, capture_output=True)
+                    print("OK")
+                    results.append(service)
+                except subprocess.CalledProcessError:
+                    print("FAILED")
+        return results
 
 
 class InterfaceManagement:
