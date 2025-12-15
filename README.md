@@ -6,9 +6,44 @@ This tool is intended to be used as a fast pipeline that collects WPS material w
 
 Current tools like `reaver` or `bully` are designed to sit and wait. Instead of "Target -> Retrieve Message -> Crack -> Next", this tool aims to automate the process without stopping on one target "Scan -> Retrieve Message -> Store -> Next"
 
-## Project Roadmap / To-Do List
+## Installation
+
+```bash
+git clone https://github.com/realcathode/wrdrv
+```
+
+### Requirements
+
+* Python 3.8+
+
+* Linux Environment (root required for interface management)
+
+* Python Dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Launch
+
+```bash
+python3 main.py -h
+```
+
+## Project Roadmap
 
 - [x] Monitor Mode Toggle: Create a reliable method to take an interface down, set mode to monitor, and bring it up.
+
+```bash
+# For more information: 
+python3 main.py {monitor/managed} -h
+```
+
+- [x]  **Basic Scanning**: reliable AP discovery using `iw` parsing, including signal strength, encryption type, and WPS status detection.
+
+```bash
+python3 main.py scan -h
+```
 
 - [ ] Structured Scanning: enhance core/scan.py to parse active clients (Stations) associated with a chosen AP, not just the APs themselves.
 
