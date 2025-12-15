@@ -1,5 +1,9 @@
-from enum import Enum
+import signal
 import subprocess
+from enum import Enum
+from dataclasses import dataclass
+
+import psutil
 
 
 class InterfaceMode(str, Enum):
@@ -14,103 +18,148 @@ class InterfaceAction(str, Enum):
     DOWN = "down"
 
 
-class AirmonAction(str, Enum):
-    """Class that represents the action of the interface."""
-    START = "start"
-    STOP = "stop"
-
-
+@dataclass
+class CheckResult:
+    """Class that represents the result of the check."""
+    services: list
+    processes: list
 
 
 """
 TODO:
-    - Capture and return stdout/stderr from `airmon-ng` commands
+    - Capture and return stdout/stderr from commands
       instead of discarding subprocess output.
-    - Parse `airmon-ng` output to detect interface renaming
-      (e.g. wlan0 -> wlan0mon).
-    - Detect and report errors when `airmon-ng` fails.
-    - Optionally return structured results (status, interface name).
     - Add logging support for executed commands.
 """
 
-class AirmonInterfaceManagement:
+class ConflictResolver:
     """
-        Provides interface mode management using `airmon-ng`.
+    Resolves conflicts with network-related services and processes.
 
-        This class wraps `airmon-ng` commands to control wireless interfaces,
-        including starting and stopping monitor mode and terminating
-        interfering processes.
+    This class is designed to detect and optionally terminate running
+    system services and processes that may interfere with low-level
+    network operations (e.g. wireless interface control, monitor mode,
+    access point setup).
 
-        Responsibilities:
-            - Start monitor mode using `airmon-ng`
-            - Stop monitor mode and return interface to managed state
-            - Kill conflicting processes via `airmon-ng check kill`
+    It checks for known conflicting services managed by systemd and
+    network-related processes running on the system. When requested,
+    it can stop these services and send termination signals to processes.
+    """
+    PROCESSES = {'wpa_action', 'wpa_supplicant', 'wpa_cli', 'dhclient', 'ifplugd', 'dhcdbd', 'dhcpcd', 'udhcpc',
+                 'NetworkManager', 'knetworkmanager', 'avahi-autoipd', 'avahi-daemon', 'wlassistant', 'wifibox',
+                 'net_applet', 'wicd-daemon', 'wicd-client', 'iwd', 'hostapd'
+                 }
+    SERVICES = {'wicd', 'network-manager', 'avahi-daemon', 'NetworkManager'}
 
-        Notes:
-            - Requires `airmon-ng` to be installed
-            - Requires root privileges
-            - Intended for systems using aircrack-ng toolset
-            - Does not validate interface availability or state
+
+    def _check_services(self, kill: bool = False):
         """
-    _interface: str
+        Check for running conflicting systemd services.
+
+        Iterates over the predefined list of services and checks their
+        status using systemctl. Optionally stops the services if requested.
+
+        :param kill: If True, stop all detected running services.
+        :return: A list of service names that were found running.
+        """
+        found_services = list()
+        for service in self.SERVICES:
+            result = subprocess.run(['systemctl', 'status', service], capture_output=True, text=True)
+            if result.returncode == 0:
+                found_services.append(service)
+                if kill:
+                    self._stop_service(service)
+        return found_services
 
     @staticmethod
-    def airmon_kill():
+    def _stop_service(service):
         """
-        Terminate processes that may interfere with monitor mode.
+        Stop a systemd service.
 
-        Executes `airmon-ng check kill` to stop network managers and other
-        services that can prevent switching a wireless interface to
-        monitor mode.
+        Attempts to stop the specified service using systemctl and prints
+        the result of the operation.
 
-        Notes:
-            - Requires root privileges
-            - Affects system-wide networking services
+        :param service: Name of the systemd service to stop.
         """
-        subprocess.run(['airmon-ng', 'check', 'kill'], capture_output=True, text=True)
+        result = subprocess.run(['systemctl', 'stop', service], capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"Service {service} stopped successfully.")
+        else:
+            print(f"Service {service} stopped unsuccessfully. Status: {result.returncode}")
 
-    def _airmon_set_interface_mode(self, action: AirmonAction):
+    def _check_processes(self, kill: bool = False):
         """
-        Change the interface mode using `airmon-ng`.
+        Check for running conflicting processes.
 
-        Starts or stops monitor mode for the configured interface.
+        Iterates over all running processes and matches their names against
+        a predefined list of known conflicting processes. Optionally sends
+        a termination signal to the detected processes.
 
-        :param action: AirmonAction.START to enable monitor mode,
-                       AirmonAction.STOP to disable it
-        :type action: AirmonAction
+        :param kill: If True, send a termination signal to found processes.
+        :return: A list of process names that were found running.
         """
-        subprocess.run(['airmon-ng', action, self._interface], capture_output=True, text=True)
+        #need check this func on real PC
+        found_processes = list()
+        for process in psutil.process_iter():
+            if process.name() in self.PROCESSES:
+                found_processes.append(process.name())
+                if kill:
+                    self._kill_processes(process)
+        return found_processes
 
-    def airmon_monitor(self):
+    @staticmethod
+    def _kill_processes(process: psutil.Process, sig = signal.SIGTERM):
         """
-        Enable monitor mode using `airmon-ng`.
+        Send a signal to terminate a process.
 
-        Internally calls `airmon-ng start <interface>`.
+        Handles common exceptions such as the process already terminating
+        or insufficient permissions.
+
+        :param process: psutil.Process instance to signal.
+        :param sig: Signal to send (default: SIGTERM).
         """
-        return self._airmon_set_interface_mode(AirmonAction.START)
+        try:
+            process.send_signal(sig)
+        except psutil.NoSuchProcess:
+            pass
+        except psutil.AccessDenied:
+            print("You are root?!")
 
-    def airmon_managed(self):
+    def check(self) -> CheckResult:
         """
-        Disable monitor mode and restore managed mode using `airmon-ng`.
+        Check for conflicting services and processes without stopping them.
 
-        Internally calls `airmon-ng stop <interface>`.
+        :return: CheckResult containing lists of running services and processes.
         """
-        return self._airmon_set_interface_mode(AirmonAction.STOP)
+        services = self._check_services()
+        process = self._check_processes()
+        return CheckResult(services=services, processes=process)
+
+    def check_and_kill(self) -> CheckResult:
+        """
+        Check for conflicting services and processes and terminate them.
+
+        Stops detected systemd services and sends termination signals
+        to detected processes.
+
+        :return: CheckResult containing lists of affected services and processes.
+        """
+        services = self._check_services(kill=True)
+        process = self._check_processes(kill=True)
+        return CheckResult(services=services, processes=process)
 
 
-class InterfaceManagement(AirmonInterfaceManagement):
+class InterfaceManagement:
     """
     Provides low-level control over a wireless network interface.
 
     This class manages both the operational state (UP/DOWN) and the
     operating mode (managed/monitor) of a network interface using
-    standard Linux networking tools (`ip`, `iw`) and optionally
-    `airmon-ng` via inheritance.
+    standard Linux networking tools (`ip`, `iw`)
 
     Responsibilities:
         - Bring the interface link state up or down
         - Switch interface mode between managed and monitor
-        - Integrate with `airmon-ng` for monitor mode management
 
     Notes:
         - Requires sufficient privileges (usually root)
