@@ -1,11 +1,10 @@
 import argparse
-import os
-import subprocess
 import sys
 
 from commands import BaseCommand
 from core.interface_management import InterfaceManagement, ConflictResolver
 from core.scan import list_interfaces
+from utils import check_interface
 
 
 class ManagedCommand(BaseCommand):
@@ -26,10 +25,7 @@ class ManagedCommand(BaseCommand):
             print(f"[ERROR] Interface required. Available: {', '.join(list_interfaces())}")
             raise SystemExit(1)
 
-        if not os.path.exists(f"/sys/class/net/{interface}"):
-            print(f"[ERROR] Interface '{interface}' not found.")
-            print(f"Available: {', '.join(list_interfaces())}")
-            sys.exit(1)
+        check_interface(interface)
 
         print(f"[*] Switching {interface} to MANAGED mode...")
 
