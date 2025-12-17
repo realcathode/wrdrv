@@ -6,6 +6,7 @@ from commands import BaseCommand
 from core.interface_management import InterfaceManagement
 from core.conflict_resolver import ConflictResolver
 from core.scan import list_interfaces
+from utils import check_interface_exists
 
 
 class MonitorCommand(BaseCommand):
@@ -21,14 +22,7 @@ class MonitorCommand(BaseCommand):
     def execute(self, **kwargs):
         interface = kwargs.get('interface')
 
-        if not interface:
-            print(f"[ERROR] Interface required. Available: {', '.join(list_interfaces())}")
-            raise SystemExit(1)
-
-        if not os.path.exists(f"/sys/class/net/{interface}"):
-            print(f"[ERROR] Interface '{interface}' not found.")
-            print(f"Available: {', '.join(list_interfaces())}")
-            sys.exit(1)
+        check_interface_exists(interface)
 
         kill = kwargs.get('kill')
 

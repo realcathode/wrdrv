@@ -7,6 +7,7 @@ from core.interface_management import InterfaceManagement
 from core.conflict_resolver import ConflictResolver
 
 from core.scan import list_interfaces
+from utils import check_interface_exists
 
 
 class ManagedCommand(BaseCommand):
@@ -23,14 +24,7 @@ class ManagedCommand(BaseCommand):
         interface = kwargs.get('interface')
         restart = kwargs.get('restart')
 
-        if not interface:
-            print(f"[ERROR] Interface required. Available: {', '.join(list_interfaces())}")
-            raise SystemExit(1)
-
-        if not os.path.exists(f"/sys/class/net/{interface}"):
-            print(f"[ERROR] Interface '{interface}' not found.")
-            print(f"Available: {', '.join(list_interfaces())}")
-            sys.exit(1)
+        check_interface_exists(interface)
 
         print(f"[*] Switching {interface} to MANAGED mode...")
 
