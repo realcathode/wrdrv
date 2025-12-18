@@ -1,13 +1,28 @@
+from dataclasses import dataclass
 import subprocess
-import os
 import re
 from typing import Dict, List, Optional
 
 from .vulnerability_database import VulnerabilityDatabase
+from utils import check_interface_exists
+
+@dataclass
+class IwOutput:
+    bssid: str
+    essid: str = "<Hidden>"
+    freq: int = 0
+    channel: int = 0
+    signal_dbm: float = -100.0
+    wpa: bool = False
+    wpa2: bool = False
+    tkip: bool = False
+    ccmp: bool = False
+    wep: bool = False
+    wps: bool = False
 
 class WirelessMonitor:
     """
-        Discovers APs using `iw`. Parses the output.
+    Discovers APs using `iw`. Parses the output.
     """
     RE_BSS_MAC = re.compile(r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$')
     RE_DS_CHANNEL = re.compile(r'^\s*DS Parameter set: channel (\d+)')
@@ -16,14 +31,13 @@ class WirelessMonitor:
     def __init__(self, interface: str, vuln_file: str = "vulnwsc.txt"):
         self.interface = interface
         self.vuln_db = VulnerabilityDatabase(vuln_file)
-        self.networks: Dict[str, dict] = {}
+        self.networks: Dict[str, IwOutput] = {}
 
     def perform_scan(self) -> str:
         """
         Executes a scan via 'iw'.
         """
-        if not os.path.exists(f"/sys/class/net/{self.interface}"):
-            return f"[FAILURE] Interface {self.interface} not found."
+        check_interface_exists(self.interface)
 
         try:
             cmd = ["sudo", "iw", "dev", self.interface, "scan"]
@@ -32,7 +46,7 @@ class WirelessMonitor:
             scanned_networks = self._parse_iw_output(proc.stdout)
 
             for net in scanned_networks:
-                self.networks[net['BSSID']] = net
+                self.networks[net.bssid] = net
 
             return f"[SUCCESS] Scan Complete. Found {len(scanned_networks)} APs."
 
@@ -41,12 +55,12 @@ class WirelessMonitor:
         except Exception as e:
             return f"[FAILURE] Unexpected error: {e}"
 
-    def _parse_iw_output(self, raw_output: str) -> List[dict]:
+    def _parse_iw_output(self, raw_output: str) -> List[IwOutput]:
         """
         Parses 'iw scan' output.
         """
         networks = []
-        current_net: Optional[Dict] = None
+        current_net: Optional[IwOutput] = None
 
         lines = raw_output.splitlines()
         for line in lines:
@@ -64,19 +78,7 @@ class WirelessMonitor:
                 mac_candidate = tokens[1].split('(')[0]
 
                 if self.RE_BSS_MAC.match(mac_candidate):
-                    current_net = {
-                        'BSSID': mac_candidate.upper(),
-                        'ESSID': '<Hidden>',
-                        'Freq': 0,
-                        'Channel': 0,
-                        'Signal_dBm': -100.0,
-                        'WPA': False,
-                        'WPA2': False,
-                        'WEP': False,
-                        'TKIP': False,
-                        'CCMP': False,
-                        'WPS': False
-                    }
+                    current_net = IwOutput(bssid=mac_candidate.upper())
                 continue
 
             if current_net is None:
@@ -85,54 +87,52 @@ class WirelessMonitor:
             if token == "SSID:":
                 ssid_val = line[5:].strip()
                 if ssid_val:
-                    current_net['ESSID'] = ssid_val
+                    current_net.essid = ssid_val
             elif "DS Parameter set: channel" in line:
                 match_ds = self.RE_DS_CHANNEL.match(line)
                 if match_ds:
-                    current_net['Channel'] = int(match_ds.group(1))
+                    current_net.channel = int(match_ds.group(1))
             elif "primary channel:" in line:
                 match_primary = self.RE_PRIMARY_CHANNEL.match(line)
                 if match_primary:
-                    current_net['Channel'] = int(match_primary.group(1))
+                    current_net.channel = int(match_primary.group(1))
             elif token == "signal:":
                 try:
                     dbm = float(tokens[1])
-                    current_net['Signal_dBm'] = dbm
+                    current_net.signal_dbm = dbm
                 except (ValueError, IndexError): pass
             elif token == "WPA:":
-                current_net['WPA'] = True
+                current_net.wpa = True
             elif token == "RSN:":
-                current_net['WPA2'] = True
+                current_net.wpa2 = True
             elif token == "capability:":
                 if "Privacy" in line:
-                    current_net['WEP'] = True
+                    current_net.wep = True
             elif "WPS:" in line:
-                current_net['WPS'] = True
+                current_net.wps = True
 
             if "CCMP" in line:
-                current_net['CCMP'] = True
+                current_net.ccmp = True
             if "TKIP" in line:
-                current_net['TKIP'] = True
+                current_net.tkip = True
 
         if current_net:
             networks.append(current_net)
 
         return networks
 
-    def get_results(self, reverse_scan: bool = False) -> Dict[int, dict]:
+    def get_results(self, reverse_scan: bool = False) -> Dict[int, IwOutput]:
         """
         Returns a sorted dictionary of networks and prints a table to stdout.
         """
-        networks_list = list(self.networks.values())
-
-        if not networks_list:
-            return {}
-
-        networks_list.sort(key=lambda x: x['Signal_dBm'], reverse=True)
-
+        networks_list = sorted(
+            self.networks.values(),
+            key=lambda x: x.signal_dbm,
+            reverse=True
+        )
         indexed_results = {(i + 1): net for i, net in enumerate(networks_list)}
 
-        print(f'\nNetworks found: {len( indexed_results)}')
+        print(f'\nNetworks found: {len(indexed_results)}')
         # Header
         print('{:<4} {:<18} {:<22} {:<4} {:<7} {:<6} {:<10} {:<10}'.format(
             '#', 'BSSID', 'ESSID', 'CH', 'PWR', 'Enc', 'Cipher', 'WPS'))
@@ -146,7 +146,7 @@ class WirelessMonitor:
 
         return indexed_results
 
-    def _print_network_row(self, index: int, net: dict):
+    def _print_network_row(self, index: int, net: IwOutput):
         """Helper to print a single row cleanly"""
         def truncate(s, length):
             s = str(s)
@@ -155,25 +155,25 @@ class WirelessMonitor:
         def colorize(text, color_code):
             return f"\033[{color_code}m{text}\033[0m"
 
-        if net['WPA2']: enc_str = "WPA2"
-        elif net['WPA']: enc_str = "WPA"
-        elif net['WEP']: enc_str = "WEP"
+        if net.wpa2: enc_str = "WPA2"
+        elif net.wpa: enc_str = "WPA"
+        elif net.wep: enc_str = "WEP"
         else: enc_str = "Open"
 
         ciphers = []
-        if net['CCMP']: ciphers.append("CCMP")
-        if net['TKIP']: ciphers.append("TKIP")
+        if net.ccmp: ciphers.append("CCMP")
+        if net.tkip: ciphers.append("TKIP")
         cipher_str = "+".join(ciphers)
 
         row = [
             truncate(f"{index})", 4),
-            truncate(net['BSSID'], 18),
-            truncate(net['ESSID'], 22),
-            truncate(net['Channel'], 4),
-            truncate(int(net['Signal_dBm']), 7),
+            truncate(net.bssid, 18),
+            truncate(net.essid, 22),
+            truncate(net.channel, 4),
+            truncate(int(net.signal_dbm), 7),
             truncate(enc_str, 6),
             truncate(cipher_str, 10),
-            truncate(net['WPS'], 10)
+            truncate(net.wps, 10)
         ]
 
         line = " ".join(row)
