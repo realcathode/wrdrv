@@ -3,6 +3,7 @@ import argparse
 
 from commands import COMMAND_REGISTRY
 
+
 class CLIDriver:
     def __init__(self):
         self.parser = argparse.ArgumentParser(description="WiFi data collection and analysis toolkit")
@@ -22,6 +23,7 @@ class CLIDriver:
             pass
         except Exception as e:
             print(f"[FATAL ERROR] {e}", file=sys.stderr)
+
 
 if __name__ == "__main__":
     driver = CLIDriver()

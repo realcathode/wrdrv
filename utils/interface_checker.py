@@ -13,6 +13,7 @@ def check_interface_exists(interface: str) -> None:
         print(f"Available: {', '.join(list_interfaces())}")
         sys.exit(1)
 
+
 def list_interfaces():
     result = subprocess.run(['ip', 'link', 'show'], capture_output=True, text=True)
     interfaces = []

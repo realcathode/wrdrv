@@ -6,6 +6,7 @@ import time
 
 from core.wireless_monitor import WirelessMonitor
 
+
 def get_unique_filename(base_path: str) -> str:
     """
     If base_path exists, append _1, _2, etc. until a free filename is found.
@@ -21,13 +22,11 @@ def get_unique_filename(base_path: str) -> str:
             return new_path
         counter += 1
 
+
 def perform_scan(interface: str, bssid: str = 'None', loops: int = 1, no_stop: bool = False,
                  reverse: bool = False, output: str = None) -> dict:
     monitor = WirelessMonitor(interface=interface)
     results = dict()
-
-    if output:
-        output_file = get_unique_filename(output)
 
     loop_iterator = itertools.count() if no_stop else range(loops)
     try:
@@ -39,6 +38,7 @@ def perform_scan(interface: str, bssid: str = 'None', loops: int = 1, no_stop: b
             results.update(current_scan_data)
 
             if output:
+                output_file = get_unique_filename(output)
                 with open(output_file, 'a') as f:
                     t = datetime.datetime.now()
                     record = {

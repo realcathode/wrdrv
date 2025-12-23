@@ -1,6 +1,7 @@
 import subprocess
 from enum import Enum
 
+
 class InterfaceMode(str, Enum):
     MONITOR = "monitor"
     MANAGED = "managed"
@@ -9,6 +10,7 @@ class InterfaceMode(str, Enum):
 class InterfaceAction(str, Enum):
     UP = "up"
     DOWN = "down"
+
 
 class InterfaceManagement:
     """
@@ -75,11 +77,13 @@ class InterfaceManagement:
         """
         subprocess.run(['ip', 'link', 'set', self._interface, InterfaceAction.DOWN.value],
                        check=check, capture_output=capture_output)
+
     def up(self) -> None:
         """
         Bring the network interface up.
         """
         subprocess.run(['ip', 'link', 'set', self._interface, InterfaceAction.UP.value], check=True)
+
     def monitor(self):
         """
         Switch the interface to monitor mode using `iw`.
@@ -91,5 +95,6 @@ class InterfaceManagement:
         Switch the interface to managed mode using `iw`.
         """
         return self._set_interface_mode(InterfaceMode.MANAGED)
+
 
 __all__ = ["InterfaceManagement"]

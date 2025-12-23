@@ -1,6 +1,7 @@
 import abc
 import argparse
 
+
 class BaseCommand(abc.ABC):
     """
     Abstract Base Class for all commands in the toolkit.

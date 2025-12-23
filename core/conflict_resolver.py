@@ -19,6 +19,7 @@ TODO:
     - Add logging support for executed commands.
 """
 
+
 class ConflictResolver:
     """
     This class is designed to detect and optionally terminate running
@@ -30,7 +31,6 @@ class ConflictResolver:
                  'net_applet', 'wicd-daemon', 'wicd-client', 'iwd', 'hostapd'
                  }
     SERVICES = {'wicd', 'network-manager', 'avahi-daemon', 'NetworkManager', 'wpa_supplicant'}
-
 
     def _check_services(self, kill: bool = False):
         """
@@ -81,7 +81,7 @@ class ConflictResolver:
         return found_processes
 
     @staticmethod
-    def _kill_processes(process: psutil.Process, sig = signal.SIGTERM):
+    def _kill_processes(process: psutil.Process, sig=signal.SIGTERM):
         """
         Handles common exceptions such as the process already terminating
         or insufficient permissions.

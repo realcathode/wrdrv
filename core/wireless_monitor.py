@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from .vulnerability_database import VulnerabilityDatabase
 from utils import check_interface_exists
 
+
 @dataclass
 class IwOutput:
     bssid: str
@@ -19,6 +20,7 @@ class IwOutput:
     ccmp: bool = False
     wep: bool = False
     wps: bool = False
+
 
 class WirelessMonitor:
     """
@@ -146,7 +148,8 @@ class WirelessMonitor:
 
         return indexed_results
 
-    def _print_network_row(self, index: int, net: IwOutput):
+    @staticmethod
+    def _print_network_row(index: int, net: IwOutput):
         """Helper to print a single row cleanly"""
         def truncate(s, length):
             s = str(s)
